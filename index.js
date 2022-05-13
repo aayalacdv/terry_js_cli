@@ -5,6 +5,13 @@ const scraperController = require('./pageController');
 
 const id = 'J18421';
 
+const OPERATIONS = {
+    SPLICE: 'xxxx-f5c5-be993402-9bd8c513-85ba2423',
+    SLITTER: 'xxxx-8788-f90c2b03-476836c6-b02fce34'
+}
+
+const operationList = [OPERATIONS.SLITTER, OPERATIONS.SPLICE]
+
 // Pass the browser instance to the scraper controller
 const main = async () => {
     let browserInstance = await browserObject.connectToBrowser();
@@ -43,25 +50,77 @@ const main = async () => {
 
     let index = 0
     let selectableElements = cables.map((cable) => createSelectableItem(cable.name));
-    const spls = splitters.map(spl => createSelectableItem(spl)); 
+    const spls = splitters.map(spl => createSelectableItem(spl));
     selectableElements = [...selectableElements, ...spls];
 
 
-    displayElementList(selectableElements, index);
+    const newList = selectableElements.filter(element => element.name !== root.name);
 
-    process.stdin.on('keypress', (str, key) => {
+    process.stdin.on('keypress', async (str, key) => {
+        require('child_process').execSync('cls', { stdio: 'inherit' });
+        console.log(`MAIN CABLE: ${root.name}`)
+
         if (key.name === 'up') {
-            index = index - 1
-            require('child_process').execSync('cls', { stdio: 'inherit' });
-            displayElementList(selectableElements, index)
+            if (index > 0) {
+                index = index - 1
+            }
+            displayElementList(newList, index)
         }
         if (key.name === 'down') {
-            index = index + 1
-            require('child_process').execSync('cls', { stdio: 'inherit' });
-            displayElementList(selectableElements, index)
+            if (index < newList.length - 1) {
+                index = index + 1
+            }
+
+            displayElementList(newList, index)
         }
         if (key.name === 'return') {
-            console.log(`You have chosen ${selectableElements[index].name}`)
+            console.log(`You have chosen ${newList[index].name}`)
+            const selected = newList[index].name;
+
+            let fibers = []
+
+            let getInput = false;
+            while (!exit) {
+
+                readline.question('Assign  fibers?', fiber => {
+                    fibers.append(Number(fiber));
+                    readline.close();
+                });
+                if(key.name == 'escape'){
+                    exit = true
+                }
+            }
+
+            const args = { root: root.name, cable: selected, fibers: fibers }
+
+            await apex.evaluate((args) => {
+                const spliceFiberToCable = (root, cable, fibers) => {
+
+                    const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === cable);
+                    const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === root);
+
+                    let index = 0
+                    let offset = 0
+                    fibers.forEach((fiber) => {
+                        interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
+                        if (index < fibers.length) {
+                            //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
+                            if (fibers[index + 1] == fiber + 1) {
+                                index = index + 1;
+                                offset = offset + 1;
+                            }
+                            else {
+                                index = index + 3 - offset;
+                            }
+                        }
+                    })
+
+                }
+
+                spliceFiberToCable(args.root, args.cable, args.fibers)
+
+            }, args);
+
         }
 
     });
@@ -75,7 +134,8 @@ const main = async () => {
 const createSelectableItem = (id) => {
     return {
         name: id,
-        selected: false
+        selected: false,
+        fiber: null
     }
 }
 
@@ -91,6 +151,44 @@ const getIncomingCable = (cables, id) => {
     });
     return res;
 }
+
+const spliceFiberToCable = (root, cable, fibers) => {
+
+    const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === cable);
+    const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === root);
+
+    const index = 0
+    fibers.forEach((fiber) => {
+        interconexionsIU.interconexions.doNewConexio(rootElement[fibers[index] - 1], cableElement[index], OPERATIONS.SPLICE, "", "", () => { });
+        if (index != fibers.length - 1) {
+            //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
+            if (fibers[index + 1] == fibers[index] + 1) {
+                index = index + 1;
+            }
+            else {
+                index = index + 3
+            }
+        }
+    })
+
+}
+
+const spliceFiberToSPL = () => {
+
+
+}
+
+const spliceFiberFromSPLtoCable = () => {
+
+}
+
+const slitterRemainingFibers = () => {
+
+}
+
+
+
+
 
 
 const displayElementList = (elements, index) => {
@@ -112,6 +210,32 @@ const displayElementList = (elements, index) => {
         else {
             console.log(`[] ${element.name}`)
         }
+
+    })
+
+}
+
+
+const displayElementListWithFibers = (elements, index) => {
+
+    elements.map((element, i) => {
+        if (index === i) {
+            element.selected = true
+        } else {
+            element.selected = false
+        }
+
+    })
+
+    console.log('Available elements')
+    elements.forEach((element) => {
+        if (element.selected == true) {
+            console.log(`[*] ${element.name}`)
+        }
+        else {
+            console.log(`[] ${element.name}`)
+        }
+
     })
 
 }
