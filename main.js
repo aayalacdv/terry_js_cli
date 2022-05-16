@@ -1,5 +1,10 @@
+const { LOADIPHLPAPI } = require('dns');
 const browserObject = require('./browser');
 const scraperController = require('./pageController');
+const readline = require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
 
 
 
@@ -73,60 +78,55 @@ const main = async () => {
 
             displayElementList(newList, index)
         }
-        if (key.name === 'return') {
-            console.log(`You have chosen ${newList[index].name}`)
-            const selected = newList[index].name;
 
+        if (key.name === 'y') {
+            console.log(`You have chosen ${newList[index].name}`);
+            const selected = newList[index].name;
             let fibers = []
 
-            let getInput = false;
-            while (!exit) {
+            const { fork } = require('child_process');
 
-                readline.question('Assign  fibers?', fiber => {
-                    fibers.append(Number(fiber));
-                    readline.close();
-                });
-                if(key.name == 'escape'){
-                    exit = true
-                }
-            }
+            const child_process = fork('./test.js');
 
-            const args = { root: root.name, cable: selected, fibers: fibers }
+            // Send the data to forked process
+            child_process.on('message', async (data) => {
+                fibers = data.fibers; 
 
-            await apex.evaluate((args) => {
-                const spliceFiberToCable = (root, cable, fibers) => {
+                const args = { root: root.name, cable: selected, fibers: fibers }
 
-                    const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === cable);
-                    const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === root);
-
-                    let index = 0
-                    let offset = 0
-                    fibers.forEach((fiber) => {
-                        interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
-                        if (index < fibers.length) {
-                            //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
-                            if (fibers[index + 1] == fiber + 1) {
-                                index = index + 1;
-                                offset = offset + 1;
+                await apex.evaluate((args) => {
+                    const spliceFiberToCable = (root, cable, fibers) => {
+            
+                        const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === cable);
+                        const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === root);
+            
+                        let index = 0
+                        let offset = 0
+                        fibers.forEach((fiber) => {
+                            interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
+                            if (index <= fibers.length) {
+                                //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
+                                if (fibers[index + 1] == fiber + 1) {
+                                    index = index + 1;
+                                    offset = offset + 1;
+                                }
+                                else {
+                                    index = index + 3 - offset;
+                                    offset-=1; 
+                                }
                             }
-                            else {
-                                index = index + 3 - offset;
-                            }
-                        }
-                    })
-
-                }
-
-                spliceFiberToCable(args.root, args.cable, args.fibers)
-
-            }, args);
+                        })
+            
+                    }
+            
+                    spliceFiberToCable(args.root, args.cable, args.fibers)
+            
+                }, args);
+            });
 
         }
 
     });
-
-
-
 
 }
 
@@ -238,6 +238,67 @@ const displayElementListWithFibers = (elements, index) => {
 
     })
 
+}
+
+
+const getUserInput = () => {
+    const prompt = require('prompt-sync')({ sigint: true });
+
+    let getInput = true;
+    let fibers = []
+
+    while (getInput) {
+        // Get user input
+        let fiber = prompt('Add a fiber');
+        // Convert the string input to a number
+        fiber = Number(fiber);
+
+        // Compare the guess to the secret answer and let the user know.
+        if (fiber == 0) {
+            getInput = false;
+        } else {
+            fibers.push(fiber)
+        }
+
+    }
+
+    console.log(fibers)
+}
+
+
+
+const spliceFibersToCable = async (apex, selected, root, fibers) => {
+
+
+    const args = { root: root.name, cable: selected, fibers: fibers }
+
+    await apex.evaluate((args) => {
+        const spliceFiberToCable = (root, cable, fibers) => {
+
+            const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === cable);
+            const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === root);
+
+            let index = 0
+            let offset = 0
+            fibers.forEach((fiber) => {
+                interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
+                if (index < fibers.length) {
+                    //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
+                    if (fibers[index + 1] == fiber + 1) {
+                        index = index + 1;
+                        offset = offset + 1;
+                    }
+                    else {
+                        index = index + 3 - offset;
+                    }
+                }
+            })
+
+        }
+
+        spliceFiberToCable(args.root, args.cable, args.fibers)
+
+    }, args);
 }
 
 
