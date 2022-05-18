@@ -1,4 +1,3 @@
-const { LOADIPHLPAPI } = require('dns');
 const browserObject = require('./browser');
 const scraperController = require('./pageController');
 const readline = require('readline').createInterface({
@@ -105,14 +104,13 @@ const main = async () => {
                         fibers.forEach((fiber) => {
                             interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
                             if (index <= fibers.length) {
-                                //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
                                 if (fibers[index + 1] == fiber + 1) {
                                     index = index + 1;
-                                    offset = offset + 1;
+                                    offset += 1
                                 }
                                 else {
                                     index = index + 3 - offset;
-                                    offset-=1; 
+                                    offset = 0;
                                 }
                             }
                         })
@@ -124,6 +122,8 @@ const main = async () => {
                 }, args);
             });
 
+
+            displayElementList(newList, index)
         }
 
     });
