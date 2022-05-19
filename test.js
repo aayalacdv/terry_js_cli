@@ -22,7 +22,7 @@ const getUserInput = () => {
 
     process.send({fibers: fibers});
     
-
+    process.exit()
 }
 
 

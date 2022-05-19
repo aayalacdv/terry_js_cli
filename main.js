@@ -29,7 +29,10 @@ const main = async () => {
     //get the cables
     const cables = await apex.evaluate(() => {
 
-        const raw = interconexionsIU.interconexions.cables.map((cable) => JSON.stringify({ name: cable.name, size: cable.numConn }));
+        const raw = interconexionsIU.interconexions.cables.map((cable) => JSON.stringify({
+            name: cable.name,
+            size: cable.numConn
+        }));
         return raw.map((cable) => JSON.parse(cable));
     });
 
@@ -61,7 +64,9 @@ const main = async () => {
     const newList = selectableElements.filter(element => element.name !== root.name);
 
     process.stdin.on('keypress', async (str, key) => {
-        require('child_process').execSync('cls', { stdio: 'inherit' });
+        require('child_process').execSync('cls', {
+            stdio: 'inherit'
+        });
         console.log(`MAIN CABLE: ${root.name}`)
 
         if (key.name === 'up') {
@@ -83,7 +88,9 @@ const main = async () => {
             const selected = newList[index].name;
             let fibers = []
 
-            const { fork } = require('child_process');
+            const {
+                fork
+            } = require('child_process');
 
             const child_process = fork('./test.js');
 
@@ -91,7 +98,11 @@ const main = async () => {
             child_process.on('message', async (data) => {
                 fibers = data.fibers;
 
-                const args = { root: root.name, cable: selected, fibers: fibers }
+                const args = {
+                    root: root.name,
+                    cable: selected,
+                    fibers: fibers
+                }
 
                 await apex.evaluate((args) => {
                     const spliceFiberToCable = (root, cable, fibers) => {
@@ -99,20 +110,11 @@ const main = async () => {
                         const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === cable);
                         const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === root);
 
-                        let index = 0
-                        let offset = 0
-                        fibers.forEach((fiber) => {
-                            interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
-                            if (index <= fibers.length) {
-                                if (fibers[index + 1] == fiber + 1) {
-                                    index = index + 1;
-                                    offset += 1
-                                }
-                                else {
-                                    index = index + 3 - offset;
-                                    offset = 0;
-                                }
-                            }
+                        let offset = fibers[0]
+                        const splicedFibers = fibers.map((fiber) => fiber - offset)
+
+                        fibers.forEach((fiber, index) => {
+                            interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[splicedFibers[index]], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => {});
                         })
 
                     }
@@ -130,9 +132,10 @@ const main = async () => {
             console.log(`You have chosen to slitter the rest of the fibers to ${newList[index].name}`);
             const selected = newList[index].name;
 
-
-            // Send the data to forked process
-            const args = { root: root.name, cable: selected }
+            const args = {
+                root: root.name,
+                cable: selected
+            }
 
             await apex.evaluate((args) => {
 
@@ -144,7 +147,7 @@ const main = async () => {
 
                 rootElement.forEach((fiber, index) => {
                     if (fiber.conexions.length == 0) {
-                        interconexionsIU.interconexions.doNewConexio(rootElement[index], cableElement[index], sliter, "", "", () => { });
+                        interconexionsIU.interconexions.doNewConexio(rootElement[index], cableElement[index], sliter, "", "", () => {});
                     }
                 })
 
@@ -154,6 +157,57 @@ const main = async () => {
 
             displayElementList(newList, index)
         }
+
+        if (key.name === 'r') {
+            console.log(`You have chosen ${newList[index].name}`);
+            const selected = newList[index].name;
+            let fibers = []
+
+            const {
+                fork
+            } = require('child_process');
+
+            const child_process = fork('./test.js');
+
+            // Send the data to forked process
+            child_process.on('message', async (data) => {
+                fibers = data.fibers;
+
+                const args = {
+                    root: root.name,
+                    cable: selected,
+                    fibers: fibers
+                }
+
+                await apex.evaluate((args) => {
+                    const reserveFibers = (id, reserved) => {
+
+                        const fibers = Icx_Connector.objects.filter(obj => obj.pare.name == id)
+                    
+                        fibers.forEach((fiber, index) => {
+                            let updated = fiber.element; 
+                            updated.reserved_a = true;  
+                    
+                            if(index == reserved[index] - 1 ){
+                                Icx_Interconexions.prototype.doUpdateFiber(updated, () => {}); 
+                            }
+                    
+                        })
+                    }
+
+                    reserveFibers(args.cable, args.fibers)
+
+                }, args);
+                
+            });
+
+
+            displayElementList(newList, index)
+        }
+
+
+
+     
 
 
     });
@@ -189,13 +243,12 @@ const spliceFiberToCable = (root, cable, fibers) => {
 
     const index = 0
     fibers.forEach((fiber) => {
-        interconexionsIU.interconexions.doNewConexio(rootElement[fibers[index] - 1], cableElement[index], OPERATIONS.SPLICE, "", "", () => { });
+        interconexionsIU.interconexions.doNewConexio(rootElement[fibers[index] - 1], cableElement[index], OPERATIONS.SPLICE, "", "", () => {});
         if (index != fibers.length - 1) {
             //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
             if (fibers[index + 1] == fibers[index] + 1) {
                 index = index + 1;
-            }
-            else {
+            } else {
                 index = index + 3
             }
         }
@@ -236,8 +289,7 @@ const displayElementList = (elements, index) => {
     elements.forEach((element) => {
         if (element.selected == true) {
             console.log(`[*] ${element.name}`)
-        }
-        else {
+        } else {
             console.log(`[] ${element.name}`)
         }
 
@@ -261,8 +313,7 @@ const displayElementListWithFibers = (elements, index) => {
     elements.forEach((element) => {
         if (element.selected == true) {
             console.log(`[*] ${element.name}`)
-        }
-        else {
+        } else {
             console.log(`[] ${element.name}`)
         }
 
@@ -272,7 +323,9 @@ const displayElementListWithFibers = (elements, index) => {
 
 
 const getUserInput = () => {
-    const prompt = require('prompt-sync')({ sigint: true });
+    const prompt = require('prompt-sync')({
+        sigint: true
+    });
 
     let getInput = true;
     let fibers = []
@@ -300,7 +353,11 @@ const getUserInput = () => {
 const spliceFibersToCable = async (apex, selected, root, fibers) => {
 
 
-    const args = { root: root.name, cable: selected, fibers: fibers }
+    const args = {
+        root: root.name,
+        cable: selected,
+        fibers: fibers
+    }
 
     await apex.evaluate((args) => {
         const spliceFiberToCable = (root, cable, fibers) => {
@@ -311,14 +368,13 @@ const spliceFibersToCable = async (apex, selected, root, fibers) => {
             let index = 0
             let offset = 0
             fibers.forEach((fiber) => {
-                interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
+                interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => {});
                 if (index < fibers.length) {
                     //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
                     if (fibers[index + 1] == fiber + 1) {
                         index = index + 1;
                         offset = offset + 1;
-                    }
-                    else {
+                    } else {
                         index = index + 3 - offset;
                     }
                 }
