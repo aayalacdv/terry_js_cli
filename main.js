@@ -106,16 +106,24 @@ const main = async () => {
 
                 await apex.evaluate((args) => {
                     const spliceFiberToCable = (root, cable, fibers) => {
-
-                        const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === cable);
                         const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === root);
 
-                        let offset = fibers[0]
-                        const splicedFibers = fibers.map((fiber) => fiber - offset)
+                        if (cable[0] == 'S' && cable[1] == 'P' && cable[2] == 'L') {
+                            const cableElement = Icx_Connector.objects.filter((obj) => obj.pare.name === cable);
+                            interconexionsIU.interconexions.doNewConexio(rootElement[fibers[0] - 1], cableElement[0], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => {});
 
-                        fibers.forEach((fiber, index) => {
-                            interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[splicedFibers[index]], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => {});
-                        })
+                        } else {
+
+                            const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === cable);
+
+                            let offset = fibers[0]
+                            const splicedFibers = fibers.map((fiber) => fiber - offset)
+
+                            fibers.forEach((fiber, index) => {
+                                interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[splicedFibers[index]], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => {});
+                            })
+
+                        }
 
                     }
 
@@ -183,22 +191,22 @@ const main = async () => {
                     const reserveFibers = (id, reserved) => {
 
                         const fibers = Icx_Connector.objects.filter(obj => obj.pare.name == id)
-                    
+
                         fibers.forEach((fiber, index) => {
-                            let updated = fiber.element; 
-                            updated.reserved_a = true;  
-                    
-                            if(index == reserved[index] - 1 ){
-                                Icx_Interconexions.prototype.doUpdateFiber(updated, () => {}); 
+                            let updated = fiber.element;
+                            updated.reserved_a = true;
+
+                            if (index == reserved[index] - 1) {
+                                Icx_Interconexions.prototype.doUpdateFiber(updated, () => {});
                             }
-                    
+
                         })
                     }
 
                     reserveFibers(args.cable, args.fibers)
 
                 }, args);
-                
+
             });
 
 
@@ -207,7 +215,7 @@ const main = async () => {
 
 
 
-     
+
 
 
     });
