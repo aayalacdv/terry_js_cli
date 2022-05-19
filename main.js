@@ -78,7 +78,7 @@ const main = async () => {
             displayElementList(newList, index)
         }
 
-        if (key.name === 'y') {
+        if (key.name === 'right') {
             console.log(`You have chosen ${newList[index].name}`);
             const selected = newList[index].name;
             let fibers = []
@@ -89,16 +89,16 @@ const main = async () => {
 
             // Send the data to forked process
             child_process.on('message', async (data) => {
-                fibers = data.fibers; 
+                fibers = data.fibers;
 
                 const args = { root: root.name, cable: selected, fibers: fibers }
 
                 await apex.evaluate((args) => {
                     const spliceFiberToCable = (root, cable, fibers) => {
-            
+
                         const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === cable);
                         const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === root);
-            
+
                         let index = 0
                         let offset = 0
                         fibers.forEach((fiber) => {
@@ -114,17 +114,47 @@ const main = async () => {
                                 }
                             }
                         })
-            
+
                     }
-            
+
                     spliceFiberToCable(args.root, args.cable, args.fibers)
-            
+
                 }, args);
             });
 
 
             displayElementList(newList, index)
         }
+
+        if (key.name === 'left') {
+            console.log(`You have chosen to slitter the rest of the fibers to ${newList[index].name}`);
+            const selected = newList[index].name;
+
+
+            // Send the data to forked process
+            const args = { root: root.name, cable: selected }
+
+            await apex.evaluate((args) => {
+
+                const sliter = "xxxx-8788-f90c2b03-476836c6-b02fce34"
+
+                const cableElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === args.cable);
+                const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === args.root);
+
+
+                rootElement.forEach((fiber, index) => {
+                    if (fiber.conexions.length == 0) {
+                        interconexionsIU.interconexions.doNewConexio(rootElement[index], cableElement[index], sliter, "", "", () => { });
+                    }
+                })
+
+            }, args);
+
+
+
+            displayElementList(newList, index)
+        }
+
 
     });
 
