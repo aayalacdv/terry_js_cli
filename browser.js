@@ -1,6 +1,6 @@
-const puppeteer = require('puppeteer');
+import puppeteer from 'puppeteer'; 
 
-async function connectToBrowser(){
+export async function connectToBrowser(){
 	let browser;
 	const connUrl = 'http://localhost:9222';
 
@@ -15,7 +15,3 @@ async function connectToBrowser(){
 	}
 	return browser;
 }
-
-module.exports = {
-	connectToBrowser
-};

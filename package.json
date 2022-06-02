@@ -1,6 +1,7 @@
 {
   "name": "puppeteer_testing",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "main.js",
   "scripts": {
@@ -10,6 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "boxen": "^6.2.1",
+    "chalk": "^5.0.1",
     "child-process": "^1.0.2",
     "prompt-sync": "^4.2.0",
     "puppeteer": "^13.5.1",

@@ -1,4 +1,7 @@
-const prompt = require('prompt-sync')({ sigint: true });
+import pr from 'prompt-sync'
+
+
+const prompt = pr({sigint: true})
 
 const getUserInput = () => {
 

@@ -1,13 +1,11 @@
-const browserObject = require('./browser');
-const scraperController = require('./pageController');
-const readline = require('readline').createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
-
-
-const id = 'J18421';
+import { connectToBrowser } from './browser.js';
+import chalk from 'chalk';
+import readline from 'readline';
+import boxen from 'boxen';
+import {
+    fork,
+    execSync
+} from 'child_process'
 
 const OPERATIONS = {
     SPLICE: 'xxxx-f5c5-be993402-9bd8c513-85ba2423',
@@ -18,7 +16,8 @@ const operationList = [OPERATIONS.SLITTER, OPERATIONS.SPLICE]
 
 // Pass the browser instance to the scraper controller
 const main = async () => {
-    let browserInstance = await browserObject.connectToBrowser();
+    console.log(chalk.red('this is a test'))
+    let browserInstance = await connectToBrowser();
     const apex = (await browserInstance.pages())[0];
 
     //get the id so we can determine root
@@ -31,7 +30,7 @@ const main = async () => {
 
         const raw = interconexionsIU.interconexions.cables.map((cable) => JSON.stringify({
             name: cable.name,
-            size: cable.numConn
+            type: cable.colorPattern.name
         }));
         return raw.map((cable) => JSON.parse(cable));
     });
@@ -47,7 +46,7 @@ const main = async () => {
 
 
     //grant user with the root cable and the available operations
-    const readline = require('readline').createInterface({
+    readline.createInterface({
         input: process.stdin,
         output: process.stdout,
         emitKeypressEvents: process.stdin,
@@ -56,15 +55,15 @@ const main = async () => {
     process.stdin.setRawMode(true);
 
     let index = 0
-    let selectableElements = cables.map((cable) => createSelectableItem(cable.name));
-    const spls = splitters.map(spl => createSelectableItem(spl));
+    let selectableElements = cables.map((cable) => createSelectableItem(cable.name, cable.type));
+    const spls = splitters.map(spl => createSelectableItem(spl, 'splitter'));
     selectableElements = [...selectableElements, ...spls];
 
 
     const newList = selectableElements.filter(element => element.name !== root.name);
 
     process.stdin.on('keypress', async (str, key) => {
-        require('child_process').execSync('cls', {
+        execSync('cls', {
             stdio: 'inherit'
         });
         console.log(`MAIN CABLE: ${root.name}`)
@@ -88,10 +87,6 @@ const main = async () => {
             const selected = newList[index].name;
             let fibers = []
 
-            const {
-                fork
-            } = require('child_process');
-
             const child_process = fork('./test.js');
 
             // Send the data to forked process
@@ -110,7 +105,7 @@ const main = async () => {
 
                         if (cable[0] == 'S' && cable[1] == 'P' && cable[2] == 'L') {
                             const cableElement = Icx_Connector.objects.filter((obj) => obj.pare.name === cable);
-                            interconexionsIU.interconexions.doNewConexio(rootElement[fibers[0] - 1], cableElement[0], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => {});
+                            interconexionsIU.interconexions.doNewConexio(rootElement[fibers[0] - 1], cableElement[0], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
 
                         } else {
 
@@ -120,7 +115,7 @@ const main = async () => {
                             const splicedFibers = fibers.map((fiber) => fiber - offset)
 
                             fibers.forEach((fiber, index) => {
-                                interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[splicedFibers[index]], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => {});
+                                interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[splicedFibers[index]], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
                             })
 
                         }
@@ -154,8 +149,8 @@ const main = async () => {
 
 
                 rootElement.forEach((fiber, index) => {
-                    if (fiber.conexions.length == 0) {
-                        interconexionsIU.interconexions.doNewConexio(rootElement[index], cableElement[index], sliter, "", "", () => {});
+                    if (fiber.conexions.length == 0 && !fiber.reserved_b) {
+                        interconexionsIU.interconexions.doNewConexio(rootElement[index], cableElement[index], sliter, "", "", () => { });
                     }
                 })
 
@@ -166,56 +161,9 @@ const main = async () => {
             displayElementList(newList, index)
         }
 
-        if (key.name === 'r') {
-            console.log(`You have chosen ${newList[index].name}`);
-            const selected = newList[index].name;
-            let fibers = []
-
-            const {
-                fork
-            } = require('child_process');
-
-            const child_process = fork('./test.js');
-
-            // Send the data to forked process
-            child_process.on('message', async (data) => {
-                fibers = data.fibers;
-
-                const args = {
-                    root: root.name,
-                    cable: selected,
-                    fibers: fibers
-                }
-
-                await apex.evaluate((args) => {
-                    const reserveFibers = (id, reserved) => {
-
-                        const fibers = Icx_Connector.objects.filter(obj => obj.pare.name == id)
-
-                        fibers.forEach((fiber, index) => {
-                            let updated = fiber.element;
-                            updated.reserved_a = true;
-
-                            if (index == reserved[index] - 1) {
-                                Icx_Interconexions.prototype.doUpdateFiber(updated, () => {});
-                            }
-
-                        })
-                    }
-
-                    reserveFibers(args.cable, args.fibers)
-
-                }, args);
-
-            });
-
-
-            displayElementList(newList, index)
-        }
-
 
         //reserve on root 
-        if (key.name === 't') {
+        if (key.name === 'r') {
             console.log(`You have chosen to reserve on root`);
             let fibers = []
 
@@ -244,7 +192,7 @@ const main = async () => {
                             updated.reserved_b = true;
 
                             if (index == reserved[index] - 1) {
-                                Icx_Interconexions.prototype.doUpdateFiber(updated, () => {});
+                                Icx_Interconexions.prototype.doUpdateFiber(updated, () => { });
                             }
 
                         })
@@ -264,10 +212,6 @@ const main = async () => {
         if (key.name === 'v') {
             console.log(`You have chosen to reserve on root`);
             let fibers = []
-
-            const {
-                fork
-            } = require('child_process');
 
             const child_process = fork('./test.js');
 
@@ -290,7 +234,7 @@ const main = async () => {
                             updated.reserved_a = true;
 
                             if (index == reserved[index] - 1) {
-                                Icx_Interconexions.prototype.doUpdateFiber(updated, () => {});
+                                Icx_Interconexions.prototype.doUpdateFiber(updated, () => { });
                             }
 
                         })
@@ -316,10 +260,11 @@ const main = async () => {
 }
 
 
-const createSelectableItem = (id) => {
+const createSelectableItem = (id, type = undefined) => {
     return {
         name: id,
         selected: false,
+        type: type,
         fiber: null
     }
 }
@@ -344,7 +289,7 @@ const spliceFiberToCable = (root, cable, fibers) => {
 
     const index = 0
     fibers.forEach((fiber) => {
-        interconexionsIU.interconexions.doNewConexio(rootElement[fibers[index] - 1], cableElement[index], OPERATIONS.SPLICE, "", "", () => {});
+        interconexionsIU.interconexions.doNewConexio(rootElement[fibers[index] - 1], cableElement[index], OPERATIONS.SPLICE, "", "", () => { });
         if (index != fibers.length - 1) {
             //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
             if (fibers[index + 1] == fibers[index] + 1) {
@@ -369,13 +314,29 @@ const spliceFiberFromSPLtoCable = () => {
 const slitterRemainingFibers = () => {
 
 }
+let Style = {
+    padding : 1
+}
 
 
+const getBoxenColor = (type) => {
+    if (type === 'Cable 48 f.o.') {
+        return {...Style, backgroundColor: 'red'} 
+    }
+    if (type === 'Cable 12 f.o.') {
+        return {...Style, backgroundColor: '#ffa500'} 
+    }
 
+    if (type === 'splitter') {
+        return {...Style, backgroundColor: 'gray'} 
+    }
+    return {...Style, backgroundColor: 'yellow'} 
 
+}
 
 
 const displayElementList = (elements, index) => {
+
 
     elements.map((element, i) => {
         if (index === i) {
@@ -388,10 +349,15 @@ const displayElementList = (elements, index) => {
 
     console.log('Available elements')
     elements.forEach((element) => {
+
+        const style = getBoxenColor(element.type);
+
         if (element.selected == true) {
-            console.log(`[*] ${element.name}`)
+            const text = `[*] ${element.name}`
+            console.log(boxen(`${text}`, style))
         } else {
-            console.log(`[] ${element.name}`)
+            const text = `[ ] ${element.name}`
+            console.log(boxen(`${text}`, style))
         }
 
     })
@@ -423,32 +389,6 @@ const displayElementListWithFibers = (elements, index) => {
 }
 
 
-const getUserInput = () => {
-    const prompt = require('prompt-sync')({
-        sigint: true
-    });
-
-    let getInput = true;
-    let fibers = []
-
-    while (getInput) {
-        // Get user input
-        let fiber = prompt('Add a fiber');
-        // Convert the string input to a number
-        fiber = Number(fiber);
-
-        // Compare the guess to the secret answer and let the user know.
-        if (fiber == 0) {
-            getInput = false;
-        } else {
-            fibers.push(fiber)
-        }
-
-    }
-
-    console.log(fibers)
-}
-
 
 
 const spliceFibersToCable = async (apex, selected, root, fibers) => {
@@ -469,7 +409,7 @@ const spliceFibersToCable = async (apex, selected, root, fibers) => {
             let index = 0
             let offset = 0
             fibers.forEach((fiber) => {
-                interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => {});
+                interconexionsIU.interconexions.doNewConexio(rootElement[fiber - 1], cableElement[index], 'xxxx-f5c5-be993402-9bd8c513-85ba2423', "", "", () => { });
                 if (index < fibers.length) {
                     //tenemos una fibra de doble vuelta y también analiza si tenemos una de tercera 
                     if (fibers[index + 1] == fiber + 1) {
