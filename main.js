@@ -1,5 +1,4 @@
 import { connectToBrowser } from './browser.js';
-import chalk from 'chalk';
 import readline from 'readline';
 import boxen from 'boxen';
 import {
@@ -16,7 +15,7 @@ const operationList = [OPERATIONS.SLITTER, OPERATIONS.SPLICE]
 
 // Pass the browser instance to the scraper controller
 const main = async () => {
-    console.log(chalk.red('this is a test'))
+
     let browserInstance = await connectToBrowser();
     const apex = (await browserInstance.pages())[0];
 
@@ -35,14 +34,22 @@ const main = async () => {
         return raw.map((cable) => JSON.parse(cable));
     });
 
+    const root = getIncomingCable(cables, boxId)
     //get the splitters
-    const splitters = await apex.evaluate(() => {
+
+    const args = {
+        root: root.name,
+    }
+    const splitters = await apex.evaluate((args) => {
         const spls = interconexionsIU.interconexions.networkClients.filter(element => element instanceof Icx_Splitter);
+
+        const rootRect = interconexionsIU.interconexions.objs.filter((obj) => obj.name === args.root)[0].rect
+        rootRect.setPos(400, 100, 100 + rootRect.w, 100 + rootRect.h)
+
         return spls.map((element => element.name));
-    })
+    }, args)
 
     //get root cable TODO filter by FEE identifier
-    const root = getIncomingCable(cables, boxId)
 
 
     //grant user with the root cable and the available operations
@@ -55,6 +62,7 @@ const main = async () => {
     process.stdin.setRawMode(true);
 
     let index = 0
+    let spliceIndex = 0
     let selectableElements = cables.map((cable) => createSelectableItem(cable.name, cable.type));
     const spls = splitters.map(spl => createSelectableItem(spl, 'splitter'));
     selectableElements = [...selectableElements, ...spls];
@@ -96,7 +104,8 @@ const main = async () => {
                 const args = {
                     root: root.name,
                     cable: selected,
-                    fibers: fibers
+                    fibers: fibers,
+                    spliceIndex: spliceIndex
                 }
 
                 await apex.evaluate((args) => {
@@ -123,6 +132,9 @@ const main = async () => {
                     }
 
                     spliceFiberToCable(args.root, args.cable, args.fibers)
+                    //move to the appropiate location taking into account the splice index (selected is the element id)
+
+
 
                 }, args);
             });
@@ -154,16 +166,24 @@ const main = async () => {
                     }
                 })
 
+                const slitterConnector = interconexionsIU.interconexions.objs.filter((obj) => obj.name === args.cable)[0];
+
+                const { x, y } = interconexionsIU.interconexions.objs.filter((obj) => obj.name === args.root)[0].rect;
+                const { h, w } = slitterConnector.rect
+
+                const xPos = x - 300
+                const yPos = y
+
+                slitterConnector.rect.setPos(xPos, yPos, xPos + w, yPos + h)
 
                 const positionElements = (root) => {
 
                     const rootElement = Icx_Connector.objects.filter((obj) => obj.pare instanceof Icx_Cable && obj.pare.name === root);
-                    const splice = 'xxxx-f5c5-be993402-9bd8c513-85ba2423';
-                    const slitter = 'xxxx-8788-f90c2b03-476836c6-b02fce34';
 
 
                     let verticalOffset = 0
                     let horizontalOffset = 1000
+                    const splice = "xxxx-f5c5-be993402-9bd8c513-85ba2423"
 
                     rootElement.forEach((fiber, index) => {
 
@@ -181,24 +201,13 @@ const main = async () => {
 
                         }
 
-                        if (fiber.conexio && fiber.conexio.tipoConector == slitter) {
-                            const slitterId = fiber.conexio.conector2.pare.name
-                            const sitterConnector = interconexionsIU.interconexions.objs.filter((obj) => obj.name === slitterId)[0];
 
-                            const { x, y } = interconexionsIU.interconexions.objs.filter((obj) => obj.name === root)[0].rect;
-                            const { h, w } = sitterConnector.rect
-
-                            const xPos = x - 600
-                            const yPos = y
-
-                            sitterConnector.rect.setPos(xPos, yPos, xPos + w, yPos + h)
-
-                        }
                     })
 
                 }
 
-                positionElements(args.root); 
+                positionElements(args.root);
+
 
             }, args);
 
@@ -212,10 +221,6 @@ const main = async () => {
         if (key.name === 'r') {
             console.log(`You have chosen to reserve on root`);
             let fibers = []
-
-            const {
-                fork
-            } = require('child_process');
 
             const child_process = fork('./test.js');
 
@@ -245,6 +250,9 @@ const main = async () => {
                     }
 
                     reserveFibers(args.root, args.fibers)
+                    const id = window.location.href.split('=')[1]
+                    Interconexions_saveUI(id, () => {})
+                    
 
                 }, args);
 
@@ -253,52 +261,6 @@ const main = async () => {
 
             displayElementList(newList, index)
         }
-
-
-        if (key.name === 'v') {
-            console.log(`You have chosen to reserve on root`);
-            let fibers = []
-
-            const child_process = fork('./test.js');
-
-            // Send the data to forked process
-            child_process.on('message', async (data) => {
-                fibers = data.fibers;
-
-                const args = {
-                    root: root.name,
-                    fibers: fibers
-                }
-
-                await apex.evaluate((args) => {
-                    const reserveFibers = (id, reserved) => {
-
-                        const fibers = Icx_Connector.objects.filter(obj => obj.pare.name == id)
-
-                        fibers.forEach((fiber, index) => {
-                            let updated = fiber.element;
-                            updated.reserved_a = true;
-
-                            if (index == reserved[index] - 1) {
-                                Icx_Interconexions.prototype.doUpdateFiber(updated, () => { });
-                            }
-
-                        })
-                    }
-
-                    reserveFibers(args.root, args.fibers)
-
-                }, args);
-
-            });
-
-
-            displayElementList(newList, index)
-        }
-
-
-
-
 
 
     });
@@ -477,3 +439,4 @@ const spliceFibersToCable = async (apex, selected, root, fibers) => {
 
 
 main()
+
