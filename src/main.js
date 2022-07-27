@@ -1,4 +1,5 @@
 import { connectToBrowser } from './browser.js';
+import puppeteer from 'puppeteer'
 import readline from 'readline';
 import {
     fork,
@@ -36,7 +37,7 @@ const main = async () => {
 
         //get setup params 
         const { root, cables, splitters } = await getSetupParams(apex)
-        let selectableElements = cables.map((cable) => createSelectableItem(cable.name, cable.type));
+        let selectableElements = cables.map((cable) => createSelectableItem(cable.name, cable.type, cable.originId, cable.destId));
         const spls = splitters.map(spl => createSelectableItem(spl, 'splitter'));
         selectableElements = [...selectableElements, ...spls];
 
@@ -124,7 +125,7 @@ const main = async () => {
         }
 
 
-        if(key.name == 's'){
+        if (key.name == 's') {
             console.log(`You have chosen to splice to SAT cable`);
             const selected = newList[SELECTION_INDEX].name;
             let fibers = []
@@ -144,9 +145,26 @@ const main = async () => {
 
             });
 
+
+
             displayElementList(newList, SELECTION_INDEX)
 
         }
+
+        if (key.name == 'n') {
+            const selected = newList[SELECTION_INDEX]
+            await apex.goto(`https://digitalinfra.apx-gis.net/#/interconexions?id=${selected.destId}`)
+            await apex.reload({ waitUntil: ["networkidle0", "domcontentloaded"] });
+        }
+        if (key.name == 'b') {
+            await apex.goto(`https://digitalinfra.apx-gis.net/#/interconexions?id=${root.originId}`)
+            await apex.reload({ waitUntil: ["networkidle0", "domcontentloaded"] });
+        }
+
+        if (key.name == 'space') {
+            await apex.reload({ waitUntil: ["networkidle0", "domcontentloaded"] });
+        }
+
 
     });
 }

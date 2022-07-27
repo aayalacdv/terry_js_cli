@@ -2,12 +2,14 @@ import getBoxenColor from "../styles/styles.js"
 import chalk from "chalk"
 import boxen from "boxen"
 
-export const createSelectableItem = (id, type = undefined) => {
+export const createSelectableItem = (id, type = undefined, originId, destId) => {
     return {
         name: id,
         selected: false,
         type: type,
-        fiber: null
+        fiber: null,
+        originId: originId, 
+        destId: destId,
     }
 }
 

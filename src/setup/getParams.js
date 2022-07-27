@@ -22,7 +22,9 @@ export const getSetupParams = async (apex) => {
 
         const raw = interconexionsIU.interconexions.cables.map((cable) => JSON.stringify({
             name: cable.name,
-            type: cable.colorPattern.name
+            type: cable.colorPattern.name, 
+            destId: cable.id_node_b,
+            originId: cable.id_node_a
         }));
         return raw.map((cable) => JSON.parse(cable));
     });
@@ -36,6 +38,7 @@ export const getSetupParams = async (apex) => {
     const args = {
         root: root.name,
     }
+
     const splitters = await apex.evaluate((args) => {
         const spls = interconexionsIU.interconexions.networkClients.filter(element => element instanceof Icx_Splitter);
 

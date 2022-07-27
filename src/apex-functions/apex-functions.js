@@ -171,9 +171,14 @@ export const spliceFromMOStoSAT = (apex, args) => {
 
         const spliceFromSPLtoCable = (limit, cable, spls) => {
 
-            for (let i = 0; i < limit; i = i + 1) {
-                interconexionsIU.interconexions.doNewConexio(cable[i], spls[i], "xxxx-f5c5-be993402-9bd8c513-85ba2423", "", "", () => { });
-            }
+            let i = 0; 
+            spls.forEach((port) => {
+                if(port.conexions.length == 0 && i < limit) {
+                    interconexionsIU.interconexions.doNewConexio( cable[i],port, "xxxx-f5c5-be993402-9bd8c513-85ba2423", "", "", () => { });
+                    i = i + 1; 
+                }
+            })
+
         }
 
 
